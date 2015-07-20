@@ -1,0 +1,143 @@
+﻿<#@ template language="C#" #>
+<#@ output extension=".gen.cs" #>
+using System;
+using System.Diagnostics;
+using System.Linq;
+
+namespace EnumerableTester
+{
+    public static class MinMaxTests
+    {
+    <#
+        var types = new []{"Int32", "Int64", "Single", "Double", "Decimal", "String", "DateTime", "ExampleReferenceType"};
+        var calls = new []{"Incremented", "Decremented", "UpAndDown", "Shuffled", "Solitaire", "Empty"};
+        var linqCalls = new []{"Min", "Max"};
+        var impls = new []{"OldEnumerable", "NewEnumerable"};
+        var tests = new System.Collections.Generic.List<string>();
+        foreach(var impl in impls)
+        foreach(var type in types)
+        foreach(var linqCall in linqCalls)
+        {
+            foreach(var call in calls)
+            {
+        if(type != "ExampleReferenceType" && Type.GetType("System." + type).IsValueType){#>
+                private static void Test<#=impl#><#=type#><#=call#>Nullable<#=linqCall#>()
+                {
+                    Console.WriteLine("Test<#=impl#><#=type#><#=call#>Nullable<#=linqCall#>");
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                    var sw = Stopwatch.StartNew();
+                    for(var i = 0; i != 100000; ++i)
+                        <#=impl#>.<#=linqCall#>(SourceEnumerables.<#=call#>Nullable<#=type#>);
+                    sw.Stop();
+                    Console.WriteLine(sw.ElapsedTicks);
+                }<#
+                tests.Add("Test" + impl + type + call + "Nullable" + linqCall);
+                }
+    #>
+        private static void Test<#=impl#><#=type#><#=call#><#=linqCall#>()
+        {
+            Console.WriteLine("Test<#=impl#><#=type#><#=call#><#=linqCall#>");
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            var sw = Stopwatch.StartNew();
+                    <#if(call == "Empty"){#>
+                    for(var i = 0; i != 100000; ++i)
+                    {
+                        try{
+                        <#=impl#>.<#=linqCall#>(SourceEnumerables.<#=call#><#=type#>);
+                        }catch{}
+                    }
+                    <#}
+                    else{#>
+                    for(var i = 0; i != 100000; ++i)
+                        <#=impl#>.<#=linqCall#>(SourceEnumerables.<#=call#><#=type#>);
+                    <#}#>
+            sw.Stop();
+            Console.WriteLine(sw.ElapsedTicks);
+        }
+<#
+        tests.Add("Test" + impl + type + call + linqCall);
+        }
+        if(type != "ExampleReferenceType" && Type.GetType("System." + type).IsValueType){
+        for(int num = 1; num != 10; ++num)
+        {#>
+            private static void Test<#=impl#>Nullable<#=type#><#=num#>0PercentNulled<#=linqCall#>()
+            {
+                Console.WriteLine("Test<#=impl#>Nullable<#=type#><#=num#>0PercentNulled<#=linqCall#>");
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                var sw = Stopwatch.StartNew();
+                for(var i = 0; i != 100000; ++i)
+                    <#=impl#>.<#=linqCall#>(SourceEnumerables.Nullable<#=type#><#=num#>0PercentNulled);
+                sw.Stop();
+                Console.WriteLine(sw.ElapsedTicks);
+            }<#
+            tests.Add("Test" + impl + "Nullable" + type + num + "0PercentNulled" + linqCall);        
+        }
+        }
+        else
+        {
+        for(int num = 1; num != 10; ++num)
+        {#>
+            private static void Test<#=impl#><#=type#><#=num#>0PercentNulled<#=linqCall#>()
+            {
+                Console.WriteLine("Test<#=impl#><#=type#><#=num#>0PercentNulled<#=linqCall#>");
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                var sw = Stopwatch.StartNew();
+                for(var i = 0; i != 100000; ++i)
+                    <#=impl#>.<#=linqCall#>(SourceEnumerables.<#=type#><#=num#>0PercentNulled);
+                sw.Stop();
+                Console.WriteLine(sw.ElapsedTicks);
+            }<#
+            tests.Add("Test" + impl + type + num + "0PercentNulled" + linqCall);        
+        }
+        }
+        if(type == "Single" || type == "Double")
+        for(int num = 1; num != 10; ++num) 
+        {
+        #>private static void Test<#=impl#><#=type#><#=num#>0PercentNaN<#=linqCall#>()
+        {
+            Console.WriteLine("Test<#=impl#><#=type#><#=num#>0PercentNaN<#=linqCall#>");
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            var sw = Stopwatch.StartNew();
+            for(var i = 0; i != 100000; ++i)
+                <#=impl#>.<#=linqCall#>(SourceEnumerables.<#=type#><#=num#>0PercentNaN);
+            sw.Stop();
+            Console.WriteLine(sw.ElapsedTicks);
+        }
+        private static void Test<#=impl#>Nullable<#=type#><#=num#>0PercentNaNOrNull<#=linqCall#>()
+        {
+            Console.WriteLine("Test<#=impl#>Nullable<#=type#><#=num#>0PercentNaNOrNull<#=linqCall#>");
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            var sw = Stopwatch.StartNew();
+            for(var i = 0; i != 100000; ++i)
+                <#=impl#>.<#=linqCall#>(SourceEnumerables.Nullable<#=type#><#=num#>0PercentNaNOrNull);
+            sw.Stop();
+            Console.WriteLine(sw.ElapsedTicks);
+        }
+        <#
+        tests.Add("Test" + impl + type + num + "0PercentNaN" + linqCall);
+        tests.Add("Test" + impl + "Nullable" + type + num + "0PercentNaNOrNull" + linqCall);
+        }
+        }
+#>      public static void DoTests()
+        {
+<#
+    foreach(var test in tests)
+    {
+#>
+            <#=test#>();
+<#}#>
+        }
+    }
+}

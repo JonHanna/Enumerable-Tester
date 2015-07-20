@@ -1,0 +1,51 @@
+﻿<#@ template language="C#" #>
+<#@ output extension=".gen.cs" #>
+using System;
+using System.Linq;
+
+namespace EnumerableTester
+{
+    public static partial class SourceEnumerables
+    {
+<#
+    var types = new []{"Int32", "Int64", "Single", "Double", "Decimal", "String", "DateTime", "ExampleReferenceType"};
+    foreach(var type in types)
+    {
+#>
+        public static <#=type#>[] Incremented<#=type#> = Enumerable.Range(0, 1000).Select(i => ConvertTo<#=type#>(i)).ToArray();
+        public static <#=type#>[] Decremented<#=type#> = Enumerable.Range(0, 1000).Select(i => ConvertTo<#=type#>(999 - i)).ToArray();
+        public static <#=type#>[] UpAndDown<#=type#> = Incremented<#=type#>.Interweave(Decremented<#=type#>).Take(1000).ToArray();
+        public static <#=type#>[] Shuffled<#=type#> = Incremented<#=type#>.ToShuffled(1).ToArray();
+        public static <#=type#>[] Empty<#=type#> = new <#=type#>[0];
+        public static <#=type#>[] Solitaire<#=type#> = new <#=type#>[]{ConvertTo<#=type#>(0)};
+    <#if(type != "ExampleReferenceType" && Type.GetType("System." + type).IsValueType){#> 
+        public static <#=type#>?[] IncrementedNullable<#=type#> = Enumerable.Range(0, 1000).Select(i => (<#=type#>?)ConvertTo<#=type#>(i)).ToArray();
+        public static <#=type#>?[] DecrementedNullable<#=type#> = Enumerable.Range(0, 1000).Select(i => (<#=type#>?)ConvertTo<#=type#>(999 - i)).ToArray();
+        public static <#=type#>?[] UpAndDownNullable<#=type#> = IncrementedNullable<#=type#>.Interweave(DecrementedNullable<#=type#>).ToArray();
+        public static <#=type#>?[] ShuffledNullable<#=type#> = IncrementedNullable<#=type#>.ToShuffled(1).ToArray();
+        public static <#=type#>?[] EmptyNullable<#=type#> = new <#=type#>?[0];
+        public static <#=type#>?[] SolitaireNullable<#=type#> = new <#=type#>?[]{ConvertTo<#=type#>(0)};
+        public static <#=type#>?[] SolitaireNull<#=type#> = new <#=type#>?[]{null};
+        <#for(int num = 1; num != 10; ++num){#>
+            public static <#=type#>?[] Nullable<#=type#><#=num#>0PercentNulled = IncrementedNullable<#=type#>.MixIn(<#=num#>, 10, 1, (<#=type#>?)null).ToArray();
+        <#}#>
+    <#}
+    else
+    {
+    #>public static <#=type#>[] SolitaireNull<#=type#> = new <#=type#>[]{null};<#
+    for(int num = 1; num != 10; ++num)
+    {#>
+        public static <#=type#>[] <#=type#><#=num#>0PercentNulled = Incremented<#=type#>.MixIn(<#=num#>, 10, 1, (<#=type#>)null).ToArray();
+    <#}
+    }#>
+<#
+    }
+    foreach(var type in new[]{"Single", "Double"})
+    for(int num = 1; num != 10; ++num)
+    {
+#>
+        public static <#=type#>[] <#=type#><#=num#>0PercentNaN = Incremented<#=type#>.MixIn(<#=num#>, 10, 1, <#=type#>.NaN).ToArray();
+        public static <#=type#>?[] Nullable<#=type#><#=num#>0PercentNaNOrNull = IncrementedNullable<#=type#>.MixIn(<#=num#>, 10, 1, <#=type#>.NaN, null).ToArray();
+<#}#>
+    }
+}
