@@ -3,6 +3,8 @@ This is a simple executable to compare the possible performance benefits of new 
 
 Results of a run of this tester can be downloaded from [here](Enumerable%20Aggregate Performance.ods?raw=true)
 
+This test run was produced using the .NET Framework on Windows on a Core i7, with power options set to have a maximum and minimum processor state of 90% to reduce the impact of CPU power adjustment.
+
 This spreadsheet has been annotated as follows:
 
 Relative improvement is given as a the difference between the new and old times as a percentage of the old time.
