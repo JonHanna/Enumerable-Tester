@@ -11,14 +11,14 @@ namespace SkipTester
     {
         public static void Main()
         {
-            Console.WriteLine("Skip While URI");
+            /*Console.WriteLine("Skip While URI");
             TestSkipsWhile(Enumerable.Range(0, 1000).Select(i => new Uri("http://example.net/" + i)));
             Console.WriteLine("Skip While String");
             TestSkipsWhile(Enumerable.Range(0, 1000).Select(i => i.ToString()));
             Console.WriteLine("Skip While Integer");
             TestSkipsWhile(Enumerable.Range(0, 1000));
             Console.WriteLine("Skip While DateTime");
-            TestSkipsWhile(Enumerable.Range(0, 1000).Select(i => new DateTime(i + 1, 1, 1)));
+            TestSkipsWhile(Enumerable.Range(0, 1000).Select(i => new DateTime(i + 1, 1, 1)));*/
             Console.WriteLine("Skip URI");
             TestSkips(Enumerable.Range(0, 1000).Select(i => new Uri("http://example.net/" + i)));
             Console.WriteLine("Skip String");
@@ -259,10 +259,13 @@ namespace SkipTester
             return new SkipIterator<TSource>(source, count);
         }
 
-        private sealed class SkipIterator<TSource> : IEnumerable<TSource>
+        private sealed class SkipIterator<TSource> : IEnumerable<TSource>, IEnumerator<TSource>
         {
             private readonly IEnumerable<TSource> _source;
             private readonly int _count;
+            private readonly int _threadId = Environment.CurrentManagedThreadId;
+            private IEnumerator<TSource> _enumerator;
+            private int _state;
 
             public SkipIterator(IEnumerable<TSource> source, int count)
             {
@@ -272,31 +275,60 @@ namespace SkipTester
 
             public IEnumerator<TSource> GetEnumerator()
             {
-                IEnumerator<TSource> sourceEnumerator = _source.GetEnumerator();
-                try
-                {
-                    for (int count = _count; count != 0; --count)
-                    {
-                        // It should be harmless to have the recipient call MoveNext again.
-                        // but we guard against strange behaviour from shortcuts in the enumerator
-                        // It should also be harmless to dispose the enumerator here if we've
-                        // exhausted it, but we guard against strange behaviour in either the
-                        // enumerator or the caller.
-                        if (!sourceEnumerator.MoveNext()) return new DeadEnumeratorWrapper<TSource>(sourceEnumerator);
-                    }
-                    return sourceEnumerator;
-                }
-                catch(Exception ex)
-                {
-                    // Force the exception to happen on a MovedNext from the caller, rather than
-                    // here.
-                    return new DeadEnumeratorWrapper<TSource>(sourceEnumerator, ExceptionDispatchInfo.Capture(ex));
-                }
+                var ret = _state == 0 && _threadId == Environment.CurrentManagedThreadId
+                    ? this : new SkipIterator<TSource>(_source, _count);
+                ret._state = _count == 0 ? 2 : 1;
+                _enumerator = _source.GetEnumerator();
+                return ret;
             }
 
             IEnumerator IEnumerable.GetEnumerator()
             {
                 return GetEnumerator();
+            }
+            
+            public TSource Current
+            {
+                get { return _enumerator.Current; }
+            }
+            
+            object IEnumerator.Current
+            {
+                get { return Current; }
+            }
+            
+            public bool MoveNext()
+            {
+                switch (_state)
+                {
+                    case 1:
+                        int count = _count;
+                        while (_enumerator.MoveNext())
+                        {
+                            if (--count == 0)
+                            {
+                                _state = 2;
+                                return true;
+                            }
+                        }
+                        break;
+                    case 2:
+                        if (_enumerator.MoveNext()) return true;
+                        break;
+                }
+                _state = -1;
+                return false;
+            }
+
+            public void Dispose()
+            {
+                if (_enumerator != null) _enumerator.Dispose();
+                _enumerator = null;
+            }
+
+            void IEnumerator.Reset()
+            {
+                throw new NotSupportedException();
             }
         }
 
