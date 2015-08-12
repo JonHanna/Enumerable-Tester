@@ -278,7 +278,7 @@ namespace SkipTester
                 var ret = _state == 0 && _threadId == Environment.CurrentManagedThreadId
                     ? this : new SkipIterator<TSource>(_source, _count);
                 ret._state = _count == 0 ? 2 : 1;
-                _enumerator = _source.GetEnumerator();
+                ret._enumerator = _source.GetEnumerator();
                 return ret;
             }
 
@@ -289,7 +289,11 @@ namespace SkipTester
             
             public TSource Current
             {
-                get { return _enumerator.Current; }
+                get
+                {
+                    IEnumerator<TSource> e = _enumerator;
+                    return e != null ? e.Current : default(TSource);
+                }
             }
             
             object IEnumerator.Current
@@ -302,14 +306,11 @@ namespace SkipTester
                 switch (_state)
                 {
                     case 1:
+                        _state = 2;
                         int count = _count;
                         while (_enumerator.MoveNext())
                         {
-                            if (--count == 0)
-                            {
-                                _state = 2;
-                                return true;
-                            }
+                            if (--count == 0) goto case 2;
                         }
                         break;
                     case 2:
